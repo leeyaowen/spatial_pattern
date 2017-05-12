@@ -57,6 +57,10 @@ plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = spname,legend=FALSE)
 
 
 #分析迴圈
+#datatype,資料種類 *all,所有存活 *dbh,不同徑級
+#year,資料年分 *91,97,05,13
+#dbhlow,徑級下界
+#dbhhigh,徑級上界
 uniloop<-function(datatype,year,dbhlow,dbhhigh){
   if(datatype=="all"){
     loopdt<-dbGetQuery(con,paste("select * from ljc3haok where ba",year,">0",sep = ""))
