@@ -9,28 +9,6 @@ sp15$sp<-iconv(sp15$sp,"UTF-8","CP950")
 splist<-as.matrix(sp15) #物種清單
 
 
-#選存活資料
-dtall<-dbGetQuery(con,"select * from ljc3haok") #選取所有資料
-dtall$sp<-iconv(dtall$sp,"UTF-8","CP950") #sp中文編碼記得轉換
-
-dtall13<-dbGetQuery(con,"select * from ljc3haok where ba13>0") #選2013年存活資料
-dtall13$sp<-iconv(dtall13$sp,"UTF-8","CP950") 
-
-dtall05<-dbGetQuery(con,"select * from ljc3haok where ba05>0") #選2005年存活資料
-dtall05$sp<-iconv(dtall05$sp,"UTF-8","CP950") 
-
-dtall97<-dbGetQuery(con,"select * from ljc3haok where ba97>0") #選1997年存活資料
-dtall97$sp<-iconv(dtall97$sp,"UTF-8","CP950")
-
-
-#選不同徑級資料
-dbh130102<-dbGetQuery(con,"select * from ljc3haok where dbh13>=1 and dbh13<2") #2013年0102
-dbh130102$sp<-iconv(dbh130102$sp,"UTF-8","CP950")
-
-dbh130204<-dbGetQuery(con,"select * from ljc3haok where dbh13>=2 and dbh13<4") #2013年0204
-dbh130204$sp<-iconv(dbh130204$sp,"UTF-8","CP950")
-
-
 
 #單變量單一物種
 unionesp<-function(spname,datatype,year,dbhlow,dbhhigh){
@@ -50,7 +28,7 @@ unionesp<-function(spname,datatype,year,dbhlow,dbhhigh){
     mypattern<-ppp(spdt$x4,spdt$y4,c(0,300),c(0,100))
     L<-envelope(mypattern, Lest, nsim = 99,correction="best")
     png(filename = paste(datatype,year,"_",spname,"_",dbhlow,"-",dbhhigh,".png",sep = ""),width = 800, height = 645, units = "px")
-    par(mar=c(5,5,5,3))
+    par(mar=c(5,6,5,3),cex.lab=2,cex.axis=2,cex.main=2)
     plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = spname,legend=FALSE)
     dev.off()
   }else{
@@ -69,7 +47,7 @@ deadtree<-function(year1,year2){
     mypattern<-ppp(deaddt$x4,deaddt$y4,c(0,300),c(0,100))
     L<-envelope(mypattern, Lest, nsim = 99,correction="best")
     png(filename = paste("dead",year2,".png",sep = ""),width = 800, height = 645, units = "px")
-    par(mar=c(5,5,5,3))
+    par(mar=c(5,6,5,3),cex.lab=2,cex.axis=2,cex.main=2)
     year3<-""
     if(year2=="97"){
       year3<-"1997"
@@ -91,14 +69,14 @@ deadtree<-function(year1,year2){
 #year,資料年分 *91,97,05,13
 #dbhlow,徑級下界
 #dbhhigh,徑級上界
-uniloop<-function(datatype,year,dbhlow,dbhhigh){
+uniloop<-function(datatype,year,dbhlow,dbhhigh,yearplot=""){
   if(datatype=="all"){
     loopdt<-dbGetQuery(con,paste("select * from ljc3haok where ba",year,">0",sep = ""))
     loopdt$sp<-iconv(loopdt$sp,"UTF-8","CP950")
     dbhlow=""
     dbhhigh=""
   }else if(datatype=="dbh"){
-    loopdt<-dbGetQuery(con,paste("select * from ljc3haok where dbh",year,">=",dbhlow,"and dbh",year,"<",dbhhigh,sep = ""))
+    loopdt<-dbGetQuery(con,paste("select * from ljc3haok where dbh",year,">=",dbhlow," and dbh",year,"<",dbhhigh,sep = ""))
     loopdt$sp<-iconv(loopdt$sp,"UTF-8","CP950")
   }else{
     stop("datatype wrong")
@@ -112,15 +90,41 @@ uniloop<-function(datatype,year,dbhlow,dbhhigh){
       ksp[k]<-splist[i]  
       k=k+1
       png(filename = paste(datatype,year,"_",splist[i],"_",dbhlow,"-",dbhhigh,".png",sep = ""),width = 800, height = 645, units = "px")
-      par(mar=c(5,5,5,3))
+      par(mar=c(5,6,5,3),cex.lab=2,cex.axis=2,cex.main=2)
       mypattern<-ppp(spatialdt$x4,spatialdt$y4,c(0,300),c(0,100))
       L<-envelope(mypattern,Lest, nsim = 99,correction="best")
-      plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = splist[i],legend=FALSE)
-      dev.off()
+      if(year=="91"){
+        yearplot="1991"
+      }else if(year=="97"){
+        yearplot="1997"
+      }else if(year=="05"){
+        yearplot="2005"
+      }else if(year=="13"){
+        yearplot="2013"
+      }
+      if(dbhlow=="25"){
+        plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = paste(yearplot,splist[i],"DBH≧ ",dbhlow,"cm",sep = "") ,legend=FALSE)
+        dev.off()
+      }else{
+        plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = paste(yearplot,splist[i],"DBH ",dbhlow,"-",dbhhigh," cm",sep = "") ,legend=FALSE)
+        dev.off()
+      }
     }else{print(paste(splist[i],"有",nrow(spatialdt),"株","can't run"))}
   }
   writeLines(paste(".\n共分析了",k-1,"個物種,包含:"))
   ksp
+}
+
+
+
+#單變量dbh迴圈2
+unidbh1<-matrix(c("1","2","4","6","8","10","25"))
+unidbh2<-matrix(c("2","4","6","8","10","25","100"))
+yearlist<-matrix(c("91","97","05","13"))
+for(i in 1:length(yearlist)){
+  for(j in 1:length(unidbh1)){
+    uniloop("dbh",yearlist[i],unidbh1[j],unidbh2[j])
+  }
 }
 
 
@@ -149,7 +153,7 @@ bivar<-function(datatype1,datatype2,year1,year2,spname){
         mypattern<-ppp(bidt$x4,bidt$y4,c(0,300),c(0,100),marks = m)
         L<-envelope(mypattern,Lcross,nsim = 99,i="new",j="dead")
         png(filename = paste(year3,"newdead_",spname,".png",sep = ""),width = 800, height = 645, units = "px")
-        par(mar=c(5,5,5,3))
+        par(mar=c(5,6,5,3),cex.lab=2,cex.axis=2,cex.main=2)
         plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = paste(spname,"新增與死亡大樹",sep=""),legend=FALSE)
         dev.off()
       }else{print(paste(spname,"或死亡大樹資料不足"))}
@@ -179,7 +183,7 @@ bivar<-function(datatype1,datatype2,year1,year2,spname){
         mypattern<-ppp(bidt$x4,bidt$y4,c(0,300),c(0,100),marks = m)
         L<-envelope(mypattern,Lcross,nsim = 99,i="new",j="survive")
         png(filename = paste(year3,"newsurvive_",spname,".png",sep = ""),width = 800, height = 645, units = "px")
-        par(mar=c(5,5,5,3))
+        par(mar=c(5,6,5,3),cex.lab=2,cex.axis=2,cex.main=2)
         plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = paste(spname,"新增與存活",sep=""),legend=FALSE)
         dev.off()
       }else{print(paste(spname,"資料不足"))}
@@ -190,7 +194,7 @@ bivar<-function(datatype1,datatype2,year1,year2,spname){
 
 
 #雙變量(物種)
-bisp<-function(datatype1,datatype2,year,sp1,sp2,dbhlow,dbhhigh){
+bisp<-function(datatype1,datatype2,year,sp1,sp2,dbhlow,dbhhigh,yearplot=""){
   if(datatype1=="all10"){
     if(datatype2=="all10"){
       bidt<-dbGetQuery(con,paste("select * from ljc3haok where dbh",year,">=10",sep = ""))
@@ -203,7 +207,7 @@ bisp<-function(datatype1,datatype2,year,sp1,sp2,dbhlow,dbhhigh){
         mypattern<-ppp(bispdt$x4,bispdt$y4,c(0,300),c(0,100),marks = m)
         L<-envelope(mypattern,Lcross,nsim = 99,i=sp1,j=sp2)
         png(filename = paste(year,"all10_",sp1,"-",sp2,".png",sep = ""),width = 800, height = 645, units = "px")
-        par(mar=c(5,5,5,3))
+        par(mar=c(5,6,5,3),cex.lab=2,cex.axis=2,cex.main=2)
         plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = paste(sp1,"與",sp2,sep=""),legend=FALSE)
         dev.off()
       }else{print("資料不足")}
@@ -222,18 +226,56 @@ bisp<-function(datatype1,datatype2,year,sp1,sp2,dbhlow,dbhhigh){
         mypattern<-ppp(bidt$x4,bidt$y4,c(0,300),c(0,100),marks = m)
         L<-envelope(mypattern,Lcross,nsim = 99,i=sp1,j=sp2)
         png(filename = paste(year,sp1,dbhlow,"-",dbhhigh,"_",sp2,".png",sep = ""),width = 800, height = 645, units = "px")
-        par(mar=c(5,5,5,3))
-        plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = paste(sp1,"0",dbhlow,"0",dbhhigh,"與",sp2,sep=""),legend=FALSE)
+        par(mar=c(5,6,5,3),cex.lab=2,cex.axis=2,cex.main=2)
+        plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = paste(sp1,"DBH ",dbhlow,"-",dbhhigh," cm與",sp2,sep=""),legend=FALSE)
         dev.off()
       }else{print("資料不足")}
-    }else{}
+    }else if(datatype2=="alive"){
+      dt1<-dbGetQuery(con,paste("select * from ljc3haok where dbh",year,">=",dbhlow," and dbh",year,"<",dbhhigh,sep = ""))
+      dt1$sp<-iconv(dt1$sp,"UTF-8","CP950")
+      spdt1<-filter(dt1,sp==sp1)
+      dt2<-dbGetQuery(con,paste("select * from ljc3haok where dbh",year,">0 except select * from ljc3haok where dbh",year,">=",dbhlow," and dbh",year,"<",dbhhigh,sep = ""))
+      dt2$sp<-iconv(dt2$sp,"UTF-8","CP950")
+      spdt2<-filter(dt2,sp==sp2)
+      if(sp1==sp2 & nrow(spdt1)>=15 & nrow(spdt2)>=15){
+        bidt<-rbind(spdt1,spdt2)
+        if(year=="91"){
+          yearplot<-"1991"
+          bidt$stasus91<-ifelse(bidt$dbh91>=as.numeric(dbhlow) & bidt$dbh91<as.numeric(dbhhigh),"sample","alive")
+          m<-as.factor(bidt$stasus91)
+        }else if(year=="97"){
+          yearplot<-"1997"
+          bidt$stasus97<-ifelse(bidt$dbh97>=as.numeric(dbhlow) & bidt$dbh97<as.numeric(dbhhigh),"sample","alive")
+          m<-as.factor(bidt$stasus97)
+        }else if(year=="05"){
+          yearplot  <-"2005"
+          bidt$stasus05<-ifelse(bidt$dbh05>=as.numeric(dbhlow) & bidt$dbh05<as.numeric(dbhhigh),"sample","alive")
+          m<-as.factor(bidt$stasus05)
+        }else if(year=="13"){
+          yearplot="2013"
+          bidt$stasus13<-ifelse(bidt$dbh13>=as.numeric(dbhlow) & bidt$dbh13<as.numeric(dbhhigh),"sample","alive")
+          m<-as.factor(bidt$stasus13)
+        }
+        mypattern<-ppp(bidt$x4,bidt$y4,c(0,300),c(0,100),marks = m)
+        L<-envelope(mypattern,Lcross,nsim = 99,i="sample",j="alive")
+        png(filename = paste(year,sp1,dbhlow,"-",dbhhigh,"_",sp2,".png",sep = ""),width = 800, height = 645, units = "px")
+        par(mar=c(5,6,5,3),cex.lab=2,cex.axis=2,cex.main=2)
+        if(dbhlow!="25"){
+          plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = paste(yearplot,sp1," ",dbhlow,"-",dbhhigh,"cm",sep=""),legend=FALSE)
+          dev.off()
+        }else{
+          plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = paste(yearplot,sp1," ≧ ",dbhlow,"cm",sep=""),legend=FALSE)
+          dev.off()
+        }
+      }else{print(paste(year,sp1,"資料不足"))}
+    }
   }
 }
 
 
 
-#雙變量迴圈(物種)
-biloop<-function(year){
+#雙變量迴圈(物種)(先載入bisp)
+bidbhsploop<-function(year){
   tempsplist1<-matrix(c("紅花八角","長尾栲","奧氏虎皮楠","南仁灰木"))
   tempsplist2<-matrix(c("紅花八角","長尾栲","奧氏虎皮楠","南仁灰木"))
   dbh1<-matrix(c("1","2","4"))
@@ -241,8 +283,23 @@ biloop<-function(year){
   for(i in 1:length(tempsplist1)){
     for(j in 1:length(tempsplist2)){
       for(k in 1:length(dbh1)){
-        bisp("dbh","all10",year,tempsplist[i],tempsplist[j],dbh1[k],dbh2[k])
+        bisp("dbh","all10",year,tempsplist1[i],tempsplist2[j],dbh1[k],dbh2[k])
       }
+    }
+  }
+}
+
+
+
+#雙變量同物種特定徑級與其他存活
+bidbh1<-matrix(c("1","2","4","6","8","10","25"))
+bidbh2<-matrix(c("2","4","6","8","10","25","100"))
+yearlist<-matrix(c("91","97","05","13"))
+tempsplist<-matrix(c("紅花八角","長尾栲","奧氏虎皮楠","南仁灰木"))
+for(i in 1:length(yearlist)){
+  for(j in 1:length(tempsplist)){
+    for(k in 1:length(bidbh1)){
+      bisp("dbh","alive",yearlist[i],tempsplist[j],tempsplist[j],bidbh1[k],bidbh2[k])
     }
   }
 }
