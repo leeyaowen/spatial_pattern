@@ -40,13 +40,13 @@ unionesp<-function(spname,datatype,year,dbhlow,dbhhigh){
 #死亡植株
 #year1,上次調查 *97,05(91只有1株死亡大樹)
 #year2,當次調查 *05,13
-deadtree<-function(year1,year2){
-  deaddt<-dbGetQuery(con,paste("select * from ljc3haok where dbh",year1,">=25 and dbh",year2,"=0",sep = ""))
+deadtree<-function(year1,year2,dbh){
+  deaddt<-dbGetQuery(con,paste("select * from ljc3haok where dbh",year1,">=",dbh," and dbh",year2,"=0",sep = ""))
   deaddt$sp<-iconv(deaddt$sp,"UTF-8","CP950")
   if(nrow(deaddt)>=15){
     mypattern<-ppp(deaddt$x4,deaddt$y4,c(0,300),c(0,100))
     L<-envelope(mypattern, Lest, nsim = 99,correction="best")
-    png(filename = paste("dead",year2,".png",sep = ""),width = 800, height = 645, units = "px")
+    png(filename = paste("dead",year2,"_",dbh,".png",sep = ""),width = 800, height = 645, units = "px")
     par(mar=c(5,6,5,3),cex.lab=2,cex.axis=2,cex.main=2)
     year3<-""
     if(year2=="97"){
@@ -56,7 +56,7 @@ deadtree<-function(year1,year2){
     }else if(year2=="13"){
       year3<-"2013"
     }
-    plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main =paste(year3,"死亡",sep = "") ,legend=FALSE)
+    plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main =paste(year3,"死亡大樹(DBH≧",dbh,"cm)",sep = "") ,legend=FALSE)
     dev.off()
   }else{
     print(paste("只有",nrow(deaddt),"株","can't run"))}
@@ -130,14 +130,14 @@ for(i in 1:length(yearlist)){
 
 
 #雙變量(類別)
-bivar<-function(datatype1,datatype2,year1,year2,spname){
+bivar<-function(datatype1,datatype2,year1,year2,spname,dbhbig){
   if(datatype1=="new"){
     if(datatype2=="dead"){
       year3<-""
       dt1<-dbGetQuery(con,paste("select * from ljc3haok where dbh",year1,"=0 and dbh",year2,">0",sep = ""))
       dt1$sp<-iconv(dt1$sp,"UTF-8","CP950")
       spdt<-filter(dt1,sp==spname)
-      dt2<-dbGetQuery(con,paste("select * from ljc3haok where dbh",year1,">=25 and dbh",year2,"=0",sep = ""))
+      dt2<-dbGetQuery(con,paste("select * from ljc3haok where dbh",year1,">=",dbhbig," and dbh",year2,"=0",sep = ""))
       dt2$sp<-iconv(dt2$sp,"UTF-8","CP950")
       if(nrow(spdt)>=15 & nrow(dt2)>=15){
         bidt<-rbind(spdt,dt2)
@@ -149,12 +149,16 @@ bivar<-function(datatype1,datatype2,year1,year2,spname){
           year3<-"2013"
           bidt$status13<-ifelse(bidt$dbh13>0,"new","dead")
           m<-as.factor(bidt$status13)
+        }else if(year2=="97"){
+          year3<-"1997"
+          bidt$status13<-ifelse(bidt$dbh97>0,"new","dead")
+          m<-as.factor(bidt$status97)
         }
         mypattern<-ppp(bidt$x4,bidt$y4,c(0,300),c(0,100),marks = m)
         L<-envelope(mypattern,Lcross,nsim = 99,i="new",j="dead")
-        png(filename = paste(year3,"newdead_",spname,".png",sep = ""),width = 800, height = 645, units = "px")
+        png(filename = paste(year3,"newdead_",dbhbig,spname,".png",sep = ""),width = 800, height = 645, units = "px")
         par(mar=c(5,6,5,3),cex.lab=2,cex.axis=2,cex.main=2)
-        plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = paste(spname,"新增與死亡大樹",sep=""),legend=FALSE)
+        plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = paste(year3,spname,"新增與死亡大樹(DBH≧",dbhbig," cm)" ,sep=""),legend=FALSE)
         dev.off()
       }else{print(paste(spname,"或死亡大樹資料不足"))}
     }else if(datatype2=="survive"){
@@ -162,7 +166,7 @@ bivar<-function(datatype1,datatype2,year1,year2,spname){
       dt1<-dbGetQuery(con,paste("select * from ljc3haok where dbh",year1,"=0 and dbh",year2,">0",sep = ""))
       dt1$sp<-iconv(dt1$sp,"UTF-8","CP950")
       spdt1<-filter(dt1,sp==spname)
-      dt2<-dbGetQuery(con,paste("select * from ljc3haok where dbh",year1,">0 and dbh",year2,">10",sep = ""))
+      dt2<-dbGetQuery(con,paste("select * from ljc3haok where dbh",year1,">0 and dbh",year2,">",dbhbig,sep = ""))
       dt2$sp<-iconv(dt2$sp,"UTF-8","CP950")
       spdt2<-filter(dt2,sp==spname)
       if(nrow(spdt1)>=15 & nrow(spdt2)>=15){
@@ -182,13 +186,31 @@ bivar<-function(datatype1,datatype2,year1,year2,spname){
         }
         mypattern<-ppp(bidt$x4,bidt$y4,c(0,300),c(0,100),marks = m)
         L<-envelope(mypattern,Lcross,nsim = 99,i="new",j="survive")
-        png(filename = paste(year3,"newsurvive_",spname,".png",sep = ""),width = 800, height = 645, units = "px")
+        png(filename = paste(year3,"newsurvive_",dbhbig,spname,".png",sep = ""),width = 800, height = 645, units = "px")
         par(mar=c(5,6,5,3),cex.lab=2,cex.axis=2,cex.main=2)
-        plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = paste(spname,"新增與存活",sep=""),legend=FALSE)
+        plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = paste(year3,spname,"新增與存活大樹(DBH≧",dbhbig," cm)",sep=""),legend=FALSE)
         dev.off()
       }else{print(paste(spname,"資料不足"))}
     }
   }else{}
+}
+
+
+
+#雙變量類別迴圈
+#datatype *"dead","survive"
+newdeadtempsplist<-matrix(c("紅花八角","長尾栲","奧氏虎皮楠","南仁灰木"))
+newdeadyearlist1<-matrix(c("91","97","05"))
+newdeadyearlist2<-matrix(c("97","05","13"))
+dbhlist<-matrix(c("10","15","20","25"))
+bivarloop<-function(datatype){
+  for(i in 1:length(newdeadyearlist2)){
+    for(j in 1:length(newdeadtempsplist)){
+      for(k in 1:length(dbhlist)){
+        bivar("new",datatype,newdeadyearlist1[i],newdeadyearlist2[i],newdeadtempsplist[j],dbhlist[k])
+      }
+    }
+  }
 }
 
 
@@ -208,7 +230,7 @@ bisp<-function(datatype1,datatype2,year,sp1,sp2,dbhlow,dbhhigh,yearplot=""){
         L<-envelope(mypattern,Lcross,nsim = 99,i=sp1,j=sp2)
         png(filename = paste(year,"all10_",sp1,"-",sp2,".png",sep = ""),width = 800, height = 645, units = "px")
         par(mar=c(5,6,5,3),cex.lab=2,cex.axis=2,cex.main=2)
-        plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = paste(sp1,"與",sp2,sep=""),legend=FALSE)
+        plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = paste(yearplot,sp1,"與",sp2,sep=""),legend=FALSE)
         dev.off()
       }else{print("資料不足")}
     }else{}
@@ -271,6 +293,25 @@ bisp<-function(datatype1,datatype2,year,sp1,sp2,dbhlow,dbhhigh,yearplot=""){
     }
   }
 }
+
+
+
+#雙變量大樹間
+yearlist<-matrix(c("91","97","05","13"))
+tempsplist<-matrix(c("紅花八角","長尾栲","奧氏虎皮楠","南仁灰木"))
+yearplotlist<-matrix(c("1991","1997","2005","2013"))
+for(i in 1:length(yearlist)){
+  for(j in 1:length(tempsplist)){
+    for(k in j+1:length(tempsplist)){
+      if(k>length(tempsplist)){
+        
+      }else if(tempsplist[j]!=tempsplist[k]){
+        bisp("all10","all10",yearlist[i],tempsplist[j],tempsplist[k],yearplot = yearplotlist[i])
+      }else{}
+    }
+  }
+}
+
 
 
 
