@@ -103,12 +103,16 @@ uniloop<-function(datatype,year,dbhlow,dbhhigh,yearplot=""){
         yearplot="2013"
       }
       if(dbhlow=="25"){
+        write.table(L, file = paste(yearplot,splist[i],"DBH≧ ",dbhlow,"cm.csv",sep = "") , sep = ",")
         plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = paste(yearplot,splist[i],"DBH≧ ",dbhlow,"cm",sep = "") ,legend=FALSE)
         dev.off()
+        
       }else{
+        write.table(L, file = paste(yearplot,splist[i],"DBH ",dbhlow,"-",dbhhigh," cm.csv",sep = ""), sep = ",")
         plot(L,.-r~r,ylab = expression(L(r)),xlab = "d(m)",main = paste(yearplot,splist[i],"DBH ",dbhlow,"-",dbhhigh," cm",sep = "") ,legend=FALSE)
         dev.off()
       }
+ 
     }else{print(paste(splist[i],"有",nrow(spatialdt),"株","can't run"))}
   }
   writeLines(paste(".\n共分析了",k-1,"個物種,包含:"))
